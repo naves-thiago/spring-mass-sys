@@ -529,39 +529,64 @@ void CalcVelocities(double dt, double * result)
 }
 #endif
 
+void CalcVelocitiesStep(double dt, double * p0, double * result)
+{
+	for (int i=0; i<VERTEX_COUNT; i++)
+	{
+		vertexes[i].p.x = p0[2*i];
+		vertexes[i].p.y = p0[2*i +1];
+	}
+
+	CalcVelocities(dt, result);
+}
+
 /**
  * \brief Calculates the next position for each vertex
  */
-void CalcPositions(void)
+void CalcPositions(double dt)
 {
-//	static vector2_t vels[VERTEX_COUNT];
+	static double  p0[2*VERTEX_COUNT];
+	static double  s1[2*VERTEX_COUNT];
+	static double  s2[2*VERTEX_COUNT];
+	static double  s3[2*VERTEX_COUNT];
+	static double  s4[2*VERTEX_COUNT];
+	static double tmp[2*VERTEX_COUNT];
 
-	// teste
-//	CalcMatrixes();
-//	CalcForces();
-
-	/*
-	for (int v=0; v<VERTEX_COUNT; v++)
+	for (int i=0; i<VERTEX_COUNT; i++)
 	{
-		vector2_t tmp = vertexes[v].v;
-		vels[v].x = RungeKutta(0, 1, EDO_STEP, tmp.x, edo_acc, v, 0);
-		vertexes[v].v.x = tmp.x;
-
-		vels[v].y = RungeKutta(0, 1, EDO_STEP, tmp.y, edo_acc, v, 1);
-		vertexes[v].v.y = tmp.y;
-
-		//printf("vx = % 0.5lf\n", vertexes[v].v.x);
-		//printf("vy = % 0.5lf\n", vertexes[v].v.y);
+		p0[2*i]    = vertexes[i].p.x;
+		p0[2*i +1] = vertexes[i].p.y;
 	}
-*/
 
+	CalcAccelerationsStep(p0, s1);
+	LinearCombination(dt, s1, 0, s1, s1, 2*VERTEX_COUNT);
+
+	LinearCombination(1, p0, 0.5, s1, tmp, 2*VERTEX_COUNT);
+	CalcAccelerationsStep(tmp, s2);
+	LinearCombination(dt, s2, 0, s2, s2, 2*VERTEX_COUNT);
+	
+	LinearCombination(1, p0, 0.5, s2, tmp, 2*VERTEX_COUNT);
+	CalcAccelerationsStep(tmp, s3);
+	LinearCombination(dt, s3, 0, s3, s3, 2*VERTEX_COUNT);
+	
+	LinearCombination(1, p0, 1, s3, tmp, 2*VERTEX_COUNT);
+	CalcAccelerationsStep(tmp, s4);
+//	LinearCombination(dt, s4, 0, s4, s4, 2*VERTEX_COUNT);
+
+	for (int i=0; i<VERTEX_COUNT; i++)
+	{
+		vertexes[i].p.x = p0[2*i]    + (s1[2*i]    + 2.0 * s2[2*i]    + 2.0 * s3[2*i]    + dt * s4[2*i])/6.0;
+		vertexes[i].p.y = p0[2*i +1] + (s1[2*i +1] + 2.0 * s2[2*i +1] + 2.0 * s3[2*i +1] + dt * s4[2*i +1])/6.0;
+	}
+
+#if 0	
 	static double vel[2*VERTEX_COUNT];
-	CalcVelocities(0.2, vel);
+	CalcVelocities(EDO_STEP, vel);
 
 	for (int v=0; v<VERTEX_COUNT; v++)
 	{
-		vertexes[v].p.x = 0.2 * vel[2*v];
-		vertexes[v].p.y = 0.2 * vel[2*v +1];
+		vertexes[v].p.x += EDO_STEP * vel[2*v];
+		vertexes[v].p.y += EDO_STEP * vel[2*v +1];
 		//teste
 //		vertexes[v].v.x += 0.2*forces[2*v];
 //		vertexes[v].v.y += 0.2*forces[2*v +1];
@@ -576,39 +601,21 @@ void CalcPositions(void)
 //		if (v == 0)
 //			printf("V=(%0.5lf, %0.5lf)\n", 0.2 * vertexes[v].v.x, 0.2 * vertexes[v].v.y);
 	}
+#endif
 }
 
 int main()
 {
-	/*
-	CalcMatrixes();
-	CalcForces();
-
-	printf("\nForces:\n");
-	PrintV(2*VERTEX_COUNT, f);
-*/
-
-
-#if 0
-	printf("p:=[");
-	for (int i=0; i<30; i++)
-	{
-		CalcPositions();
-		if (i != 29)
-			printf("[%0.5lf,%0.5lf],", vertexes[0].p.x, vertexes[0].p.y);
-		else
-			printf("[%0.5lf,%0.5lf]];\n", vertexes[0].p.x, vertexes[0].p.y);
-	}
-
-	printf("listplot(p);\n");
-#endif
-
 #if 1
 	char * colors[] = {"red", "blue", "green", "black", "brown", "grey", "maroon", "yellow", "orange", "purple", "purple", NULL};
+
+	double d = sqrt((vertexes[0].p.x - vertexes[1].p.x)*(vertexes[0].p.x - vertexes[1].p.x) + (vertexes[0].p.y - vertexes[1].p.y)*(vertexes[0].p.y - vertexes[1].p.y));
+	printf("#%0.5lf\n", d);
+
 	printf("with(plots):\n");
 	for (int i=0; i<16; i++)
 	{
-		CalcPositions();
+		CalcPositions(EDO_STEP);
 
 		double d = sqrt((vertexes[0].p.x - vertexes[1].p.x)*(vertexes[0].p.x - vertexes[1].p.x) + (vertexes[0].p.y - vertexes[1].p.y)*(vertexes[0].p.y - vertexes[1].p.y));
 		printf("#%0.5lf\n", d);
