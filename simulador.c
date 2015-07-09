@@ -14,14 +14,14 @@ typedef struct
 	double len;        ///< Relaxed length
 	vector2_t anchor;  ///< Fixed anchor point
 	int vertex;        ///< Attached vertex
-} spring_t;          ///< Spring properties
+} spring_t;            ///< Spring properties
 
 typedef struct
 {
 	double m;     ///< Mass
 	vector2_t v;  ///< Current Velocity
 	vector2_t p;  ///< Current Position
-} vertex_t;     ///< Vertex properties / state
+} vertex_t;       ///< Vertex properties / state
 
 /* Simulation parameters */
 #define EDO_STEP 0.1
@@ -173,7 +173,7 @@ void BackSubstitution(int n, double *a, double *b, double *x)
 }
 
 /**
- * \brief Gauss Elimination: Make a into a upper triangular matrix
+ * \brief Gauss Elimination: Make a into an upper triangular matrix
  * \param n Variable count
  * \param a Coefficient matrix
  * \param b Independent vector
@@ -227,7 +227,7 @@ void GaussElimination(int n, double *a, double *b)
  */
 void MatrixMultiply(int m, int n, int l, double *A, double *B, double *C)
 {
-	for (int a=0; a<m; a++)      // line
+	for (int a=0; a<m; a++)        // line
 		for (int b=0; b<l; b++)    // column
 		{
 			C[a*l + b] = 0;
@@ -345,7 +345,7 @@ void CalcMatrixes(void)
 void CalcForces(void)
 {
 	double *f = forces;
-	memset(f, 0, sizeof(f));
+	memset(forces, 0, sizeof(forces));
 
 	// Springs
 	for (int i=0; i<SPRING_COUNT; i++)
@@ -444,9 +444,9 @@ double edo_acc(double t, double y, int v, char a)
 double edo_vel(double t, double y, int v, char a)
 {
 	if (!a)
-		return vertexes[v].v.x;
+		return y * vertexes[v].v.x;
 
-	return vertexes[v].v.y;
+	return y * vertexes[v].v.y;
 }
 
 /**
@@ -483,8 +483,13 @@ void CalcPositions(void)
 		//printf("Vertex: %d\tForce: (%0.5lf, %0.5lf)\n", v, forces[2*v], forces[2*v +1]);
 		//---
 //		vertexes[v].v = vels[v];
-		vertexes[v].p.x += 0.2*vertexes[v].v.x;
-		vertexes[v].p.y += 0.2*vertexes[v].v.y;
+//		vertexes[v].p.x += 0.2*vertexes[v].v.x;
+//		vertexes[v].p.y += 0.2*vertexes[v].v.y;
+		vertexes[v].p.x = RungeKutta(0, 0.2, 0.05, vertexes[v].p.x, edo_vel, v, 0);
+		vertexes[v].p.y = RungeKutta(0, 0.2, 0.05, vertexes[v].p.y, edo_vel, v, 1);
+
+//		if (v == 0)
+//			printf("V=(%0.5lf, %0.5lf)\n", 0.2 * vertexes[v].v.x, 0.2 * vertexes[v].v.y);
 	}
 }
 
