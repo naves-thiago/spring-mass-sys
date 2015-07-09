@@ -117,41 +117,6 @@ double RungeKutta(double t0, double t1, double h, double y0, double (*f)(double 
 }
 
 /**
- * \brief Print a square matrix and a vector
- * \param m Lines
- * \param n Columns
- * \param a Matrix
- * \param b Vector
- */
-void PrintM(int m, int n, double *a, double *b)
-{
-	// i = line
-	// j = column
-	for (int i=0; i<m; i++)
-	{
-		for (int j=0; j<n; j++)
-			printf("% 0.5lf\t", a[i*n + j]);
-
-		if (b)
-			printf("|\t% 0.5lf\n", b[i]);
-		else
-			printf("\n");
-	}
-}
-
-/**
- * \brief Print a vector
- * \param n Size
- * \param x Vector
- */
-void PrintV(int n, double *x)
-{
-	for (int i=0; i<n; i++)
-		printf("%lf\t", x[i]);
-	printf("\n");
-}
-
-/**
  * \brief Calculates a linear combination of 2 vectors
  * \param ca A coefficient
  * \param A Vector A
@@ -332,29 +297,14 @@ void CalcMatrixes(void)
 		dJ[k * 2 * VERTEX_COUNT + 2 * vj(k) + 1] -= dJinc.y;
 	}
 
-	//printf("\nJ:\n");
-	//PrintM(BAR_COUNT, 2 * VERTEX_COUNT, J, NULL);
-
-	for (int i=0; i<2*VERTEX_COUNT; i++) // Column
+	for (int i=0; i<2*VERTEX_COUNT; i++)   // Column
 		for (int k=0; k<BAR_COUNT; k++)    // Line
 			JW[k*2*VERTEX_COUNT + i] = J[k*2*VERTEX_COUNT + i] / W(i);
 
-	//printf("\nJW:\n");
-	//PrintM(BAR_COUNT, 2 * VERTEX_COUNT, JW, NULL);
-
-	//printf("\ndJ:\n");
-	//PrintM(BAR_COUNT, 2 * VERTEX_COUNT, dJ, NULL);
-
 	MatrixTranspose(BAR_COUNT, 2 * VERTEX_COUNT, J, JT);
-
-	//printf("\nJT:\n");
-	//PrintM(2 * VERTEX_COUNT, BAR_COUNT, JT, NULL);
 
 	// Calc JWJT
 	MatrixMultiply(BAR_COUNT, 2 * VERTEX_COUNT, BAR_COUNT, JW, JT, JWJT);
-
-	//printf("\nJWJT:\n");
-	//PrintM(BAR_COUNT, BAR_COUNT, JWJT, NULL);
 }
 
 void CalcForces(void)
@@ -376,15 +326,9 @@ void CalcForces(void)
 		f[2*vertex + 1] = - springs[i].k * (d - springs[i].len) * sd.y / d;
 	}
 
-	//printf("\nSpring Forces:\n");
-	//PrintV(2*VERTEX_COUNT, f);
-
 	// Gravity
 	for (int i=0; i<VERTEX_COUNT; i++)
 		f[2*i + 1] -= GRAVITY * vertexes[i].m;
-
-	//printf("\nSpring + Gravity:\n");
-	//PrintV(2*VERTEX_COUNT, f);
 
 	// Calc lambda
 	static double lambda[BAR_COUNT];
@@ -401,71 +345,20 @@ void CalcForces(void)
 		}
 	}
 
-	//printf("\nLambda B\n");
-	//PrintV(BAR_COUNT, b);
-
 	// Solve system (change this to LU decomposition)
 	static double tmp[BAR_COUNT * BAR_COUNT];
 	memcpy(tmp, JWJT, sizeof(tmp));
 	GaussElimination(BAR_COUNT, tmp, b);
 	BackSubstitution(BAR_COUNT, tmp, b, lambda);
 	
-	//printf("\nLambda\n");
-	//PrintV(BAR_COUNT, lambda);
-
 	// Calc restriction forces
 	// fc = JT * lambda
 	MatrixMultiply(2*VERTEX_COUNT, BAR_COUNT, 1, JT, lambda, fc);
 
 	for (int i=0; i<2*VERTEX_COUNT; i++)
 		forces[i] += fc[i];
-
-	//printf("\nfc\n");
-	//PrintV(2*VERTEX_COUNT, fc);
-
-	//printf("\nForces:\n");
-	//PrintV(2*VERTEX_COUNT, f);
 }
 
-/**
- * \brief Acceleration EDO to be solved for each vertex on each interaction
- * \param t time
- * \param y velocity
- * \param v vertex
- * \param a axis (0 -> x, 1 -> y)
- * \return acceleration
- */
-double edo_acc(double t, double y, int v, char a)
-{
-	// rever
-	if (!a)
-		vertexes[v].v.x = y;
-	else
-		vertexes[v].v.y = y;
-
-	CalcMatrixes();
-	CalcForces();
-
-	return forces[2*v + a] / vertexes[v].m;
-}
-
-/**
- * \brief Velocity EDO to be solved for each vertex on each interaction
- * \param t time
- * \param y position
- * \param v vertex
- * \param a axis (0 -> x, 1 -> y)
- * \return velocity
- */
-double edo_vel(double t, double y, int v, char a)
-{
-	if (!a)
-		return y * vertexes[v].v.x;
-
-	return y * vertexes[v].v.y;
-}
-
-#if 1
 /**
  * \brief First order acceleration calculation for all vertexes (will recalculate forces)
  * \param v0 Current velocities
@@ -522,13 +415,18 @@ void CalcVelocities(double dt, double * result)
 	
 	LinearCombination(1, v0, 1, s3, tmp, 2*VERTEX_COUNT);
 	CalcAccelerationsStep(tmp, s4);
-//	LinearCombination(dt, s4, 0, s4, s4, 2*VERTEX_COUNT);
+//	LinearCombination(dt, s4, 0, s4, s4, 2*VERTEX_COUNT);  <-- Done in the sum below
 
 	for (int i=0; i<2*VERTEX_COUNT; i++)
 		result[i] = v0[i] + (s1[i] + 2.0 * s2[i] + 2.0 * s3[i] + dt * s4[i])/6.0;
 }
-#endif
 
+/**
+ * \brief First order velocity calculation for all vertexes (will recalculate velocities and forces)
+ * \param dt Integration interval
+ * \param p0 Current positions
+ * \param result Will contain the calculated velocities
+ */
 void CalcVelocitiesStep(double dt, double * p0, double * result)
 {
 	for (int i=0; i<VERTEX_COUNT; i++)
@@ -542,6 +440,7 @@ void CalcVelocitiesStep(double dt, double * p0, double * result)
 
 /**
  * \brief Calculates the next position for each vertex
+ * \param dt Integration interval
  */
 void CalcPositions(double dt)
 {
@@ -571,42 +470,17 @@ void CalcPositions(double dt)
 	
 	LinearCombination(1, p0, 1, s3, tmp, 2*VERTEX_COUNT);
 	CalcAccelerationsStep(tmp, s4);
-//	LinearCombination(dt, s4, 0, s4, s4, 2*VERTEX_COUNT);
+//	LinearCombination(dt, s4, 0, s4, s4, 2*VERTEX_COUNT);  <-- Done in the sum below
 
 	for (int i=0; i<VERTEX_COUNT; i++)
 	{
 		vertexes[i].p.x = p0[2*i]    + (s1[2*i]    + 2.0 * s2[2*i]    + 2.0 * s3[2*i]    + dt * s4[2*i])/6.0;
 		vertexes[i].p.y = p0[2*i +1] + (s1[2*i +1] + 2.0 * s2[2*i +1] + 2.0 * s3[2*i +1] + dt * s4[2*i +1])/6.0;
 	}
-
-#if 0	
-	static double vel[2*VERTEX_COUNT];
-	CalcVelocities(EDO_STEP, vel);
-
-	for (int v=0; v<VERTEX_COUNT; v++)
-	{
-		vertexes[v].p.x += EDO_STEP * vel[2*v];
-		vertexes[v].p.y += EDO_STEP * vel[2*v +1];
-		//teste
-//		vertexes[v].v.x += 0.2*forces[2*v];
-//		vertexes[v].v.y += 0.2*forces[2*v +1];
-		//printf("Vertex: %d\tForce: (%0.5lf, %0.5lf)\n", v, forces[2*v], forces[2*v +1]);
-		//---
-//		vertexes[v].v = vels[v];
-//		vertexes[v].p.x += 0.2*vertexes[v].v.x;
-//		vertexes[v].p.y += 0.2*vertexes[v].v.y;
-//		vertexes[v].p.x = RungeKutta(0, 0.2, 0.2, vertexes[v].p.x, edo_vel, v, 0);
-//		vertexes[v].p.y = RungeKutta(0, 0.2, 0.2, vertexes[v].p.y, edo_vel, v, 1);
-
-//		if (v == 0)
-//			printf("V=(%0.5lf, %0.5lf)\n", 0.2 * vertexes[v].v.x, 0.2 * vertexes[v].v.y);
-	}
-#endif
 }
 
 int main()
 {
-#if 1
 	char * colors[] = {"red", "blue", "green", "black", "brown", "grey", "maroon", "yellow", "orange", "purple", "purple", NULL};
 
 	double d = sqrt((vertexes[0].p.x - vertexes[1].p.x)*(vertexes[0].p.x - vertexes[1].p.x) + (vertexes[0].p.y - vertexes[1].p.y)*(vertexes[0].p.y - vertexes[1].p.y));
@@ -657,6 +531,5 @@ int main()
 			printf("g%d,", v);
 		else
 			printf("g%d);\n", v);
-#endif
 	return 0;
 }
