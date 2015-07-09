@@ -76,47 +76,6 @@ double fc[2 * VERTEX_COUNT];
 static double forces[2 * VERTEX_COUNT];
 
 /**
- * \brief 4th order Runge-Kutta EDO solver
- * \param t0 Initial t value
- * \param t1 Final t value
- * \param h Step
- * \param y0 y value at time t0
- * \param f EDO
- * \param v EDO's vertex param
- * \param a EDO's axis param
- * \return y value at time t1
- */
-double RungeKutta(double t0, double t1, double h, double y0, double (*f)(double t, double y, int v, char a), int v, char a)
-{
-	double s1, s2, s3, s4, yt, yt1, t;
-	yt = y0;
-	t = t0;
-	char b = 0;
-
-	while (t < t1)
-	{
-		if (t + h > t1)
-		{
-			b = 1; // break
-			h = t1 - t;
-		}
-
-		s1 = h*f(t, yt, v, a);
-		s2 = h*f(t + h/2, yt + s1/2, v, a);
-		s3 = h*f(t + h/2, yt + s2/2, v, a);
-		s4 = h*f(t + h,   yt + s3, v, a);
-		yt1 = yt + (s1 + 2*s2 + 2*s3 + s4)/6;
-		t += h;
-		yt = yt1;
-
-		if (b)
-			break;
-	}
-
-	return yt;
-}
-
-/**
  * \brief Calculates a linear combination of 2 vectors
  * \param ca A coefficient
  * \param A Vector A
