@@ -82,8 +82,8 @@ static double forces[2 * VERTEX_COUNT];
  * \param h Step
  * \param y0 y value at time t0
  * \param f EDO
- * \param v EDO's v param
- * \param a EDO's a param
+ * \param v EDO's vertex param
+ * \param a EDO's axis param
  * \return y value at time t1
  */
 double RungeKutta(double t0, double t1, double h, double y0, double (*f)(double t, double y, int v, char a), int v, char a)
@@ -149,6 +149,21 @@ void PrintV(int n, double *x)
 	for (int i=0; i<n; i++)
 		printf("%lf\t", x[i]);
 	printf("\n");
+}
+
+/**
+ * \brief Calculates a linear combination of 2 vectors
+ * \param ca A coefficient
+ * \param A Vector A
+ * \param cb B coefficient
+ * \param B Vector B
+ * \param result Combined vector
+ * \param N Element count
+ */
+void LinearCombination(double ca, double * A, double cb, double * B, double * result, int N)
+{
+	for (int i=0; i<N; i++)
+		result[i] = ca * A[i] + cb * B[i];
 }
 
 /**
@@ -422,6 +437,7 @@ void CalcForces(void)
  */
 double edo_acc(double t, double y, int v, char a)
 {
+	// rever
 	if (!a)
 		vertexes[v].v.x = y;
 	else
@@ -449,6 +465,70 @@ double edo_vel(double t, double y, int v, char a)
 	return y * vertexes[v].v.y;
 }
 
+#if 1
+/**
+ * \brief First order acceleration calculation for all vertexes (will recalculate forces)
+ * \param v0 Current velocities
+ * \param result Will contain the calculated accelerations
+ */
+void CalcAccelerationsStep(double * v0, double * result)
+{
+	for (int i=0; i<VERTEX_COUNT; i++)
+	{
+		vertexes[i].v.x = v0[2*i];
+		vertexes[i].v.y = v0[2*i +1];
+	}
+
+	CalcMatrixes();
+	CalcForces();
+
+	for (int i=0; i<VERTEX_COUNT; i++)
+	{
+		result[2*i]    = forces[2*i]    / vertexes[i].m;
+		result[2*i +1] = forces[2*i +1] / vertexes[i].m;
+	}
+}
+
+/**
+ * \brief 4th order Runge-Kutta velocity calculation for all vertexes
+ * \param dt Integration time interval
+ * \param result Calculated velocities vector
+ */
+void CalcVelocities(double dt, double * result)
+{
+	static double  v0[2*VERTEX_COUNT];
+	static double  s1[2*VERTEX_COUNT];
+	static double  s2[2*VERTEX_COUNT];
+	static double  s3[2*VERTEX_COUNT];
+	static double  s4[2*VERTEX_COUNT];
+	static double tmp[2*VERTEX_COUNT];
+
+	for (int i=0; i<VERTEX_COUNT; i++)
+	{
+		v0[2*i]    = vertexes[i].v.x;
+		v0[2*i +1] = vertexes[i].v.y;
+	}
+
+	CalcAccelerationsStep(v0, s1);
+	LinearCombination(dt, s1, 0, s1, s1, 2*VERTEX_COUNT);
+
+	LinearCombination(1, v0, 0.5, s1, tmp, 2*VERTEX_COUNT);
+	CalcAccelerationsStep(tmp, s2);
+	LinearCombination(dt, s2, 0, s2, s2, 2*VERTEX_COUNT);
+	
+	LinearCombination(1, v0, 0.5, s2, tmp, 2*VERTEX_COUNT);
+	CalcAccelerationsStep(tmp, s3);
+	LinearCombination(dt, s3, 0, s3, s3, 2*VERTEX_COUNT);
+	
+	LinearCombination(1, v0, 1, s3, tmp, 2*VERTEX_COUNT);
+	CalcAccelerationsStep(tmp, s4);
+//	LinearCombination(dt, s4, 0, s4, s4, 2*VERTEX_COUNT);
+
+	for (int i=0; i<2*VERTEX_COUNT; i++)
+		result[i] = v0[i] + (s1[i] + 2.0 * s2[i] + 2.0 * s3[i] + dt * s4[i])/6.0;
+}
+#endif
+
 /**
  * \brief Calculates the next position for each vertex
  */
@@ -457,8 +537,8 @@ void CalcPositions(void)
 //	static vector2_t vels[VERTEX_COUNT];
 
 	// teste
-	CalcMatrixes();
-	CalcForces();
+//	CalcMatrixes();
+//	CalcForces();
 
 	/*
 	for (int v=0; v<VERTEX_COUNT; v++)
@@ -475,18 +555,23 @@ void CalcPositions(void)
 	}
 */
 
+	static double vel[2*VERTEX_COUNT];
+	CalcVelocities(0.2, vel);
+
 	for (int v=0; v<VERTEX_COUNT; v++)
 	{
+		vertexes[v].p.x = 0.2 * vel[2*v];
+		vertexes[v].p.y = 0.2 * vel[2*v +1];
 		//teste
-		vertexes[v].v.x += 0.2*forces[2*v];
-		vertexes[v].v.y += 0.2*forces[2*v +1];
+//		vertexes[v].v.x += 0.2*forces[2*v];
+//		vertexes[v].v.y += 0.2*forces[2*v +1];
 		//printf("Vertex: %d\tForce: (%0.5lf, %0.5lf)\n", v, forces[2*v], forces[2*v +1]);
 		//---
 //		vertexes[v].v = vels[v];
 //		vertexes[v].p.x += 0.2*vertexes[v].v.x;
 //		vertexes[v].p.y += 0.2*vertexes[v].v.y;
-		vertexes[v].p.x = RungeKutta(0, 0.2, 0.05, vertexes[v].p.x, edo_vel, v, 0);
-		vertexes[v].p.y = RungeKutta(0, 0.2, 0.05, vertexes[v].p.y, edo_vel, v, 1);
+//		vertexes[v].p.x = RungeKutta(0, 0.2, 0.2, vertexes[v].p.x, edo_vel, v, 0);
+//		vertexes[v].p.y = RungeKutta(0, 0.2, 0.2, vertexes[v].p.y, edo_vel, v, 1);
 
 //		if (v == 0)
 //			printf("V=(%0.5lf, %0.5lf)\n", 0.2 * vertexes[v].v.x, 0.2 * vertexes[v].v.y);
