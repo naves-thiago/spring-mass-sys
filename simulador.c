@@ -25,11 +25,12 @@ typedef struct
 
 /* Simulation parameters */
 #define EDO_STEP 0.1
+#define STEP_COUNT 200
 //#define GRAVITY 9.8
 //#define VERTEX_COUNT 4
 //#define BAR_COUNT 4
 //#define SPRING_COUNT 2
-#define GRAVITY 0
+#define GRAVITY 9.8
 #define VERTEX_COUNT 2
 #define BAR_COUNT 1
 #define SPRING_COUNT 1
@@ -416,19 +417,19 @@ void CalcPositions(double dt)
 		p0[2*i +1] = vertexes[i].p.y;
 	}
 
-	CalcAccelerationsStep(p0, s1);
+	CalcVelocitiesStep(dt, p0, s1);
 	LinearCombination(dt, s1, 0, s1, s1, 2*VERTEX_COUNT);
 
 	LinearCombination(1, p0, 0.5, s1, tmp, 2*VERTEX_COUNT);
-	CalcAccelerationsStep(tmp, s2);
+	CalcVelocitiesStep(dt, tmp, s2);
 	LinearCombination(dt, s2, 0, s2, s2, 2*VERTEX_COUNT);
 	
 	LinearCombination(1, p0, 0.5, s2, tmp, 2*VERTEX_COUNT);
-	CalcAccelerationsStep(tmp, s3);
+	CalcVelocitiesStep(dt, tmp, s3);
 	LinearCombination(dt, s3, 0, s3, s3, 2*VERTEX_COUNT);
 	
 	LinearCombination(1, p0, 1, s3, tmp, 2*VERTEX_COUNT);
-	CalcAccelerationsStep(tmp, s4);
+	CalcVelocitiesStep(dt, tmp, s4);
 //	LinearCombination(dt, s4, 0, s4, s4, 2*VERTEX_COUNT);  <-- Done in the sum below
 
 	for (int i=0; i<VERTEX_COUNT; i++)
@@ -438,15 +439,12 @@ void CalcPositions(double dt)
 	}
 }
 
-int main()
+void maple()
 {
 	char * colors[] = {"red", "blue", "green", "black", "brown", "grey", "maroon", "yellow", "orange", "purple", "purple", NULL};
 
-	double d = sqrt((vertexes[0].p.x - vertexes[1].p.x)*(vertexes[0].p.x - vertexes[1].p.x) + (vertexes[0].p.y - vertexes[1].p.y)*(vertexes[0].p.y - vertexes[1].p.y));
-	printf("#%0.5lf\n", d);
-
 	printf("with(plots):\n");
-	for (int i=0; i<16; i++)
+	for (int i=0; i<STEP_COUNT; i++)
 	{
 		CalcPositions(EDO_STEP);
 
@@ -467,7 +465,7 @@ int main()
 	for (int v=0; v<VERTEX_COUNT; v++)
 	{
 		printf("p%d:=[", v);
-		for (int i=0; i<16; i++)
+		for (int i=0; i<STEP_COUNT; i++)
 		{
 			printf("[%c[1,%d],%c[2,%d]]", 'a'+i, v+1, 'a'+i, v+1);
 			//printf("[%d,%c[2,%d]]", i, 'a'+i, v+1);
@@ -490,5 +488,23 @@ int main()
 			printf("g%d,", v);
 		else
 			printf("g%d);\n", v);
+}
+
+void matlab(void)
+{
+	for (int v=0; v<VERTEX_COUNT; v++)
+		printf("p%d=zeros(2, %d);\n", v, STEP_COUNT);
+
+	for (int i=0; i<STEP_COUNT; i++)
+	{
+		CalcPositions(EDO_STEP);
+		for (int v=0; v<VERTEX_COUNT; v++)
+			printf("p%d(1:2, %d)=[%0.5lf %0.5lf];\n", v, i+1, vertexes[v].p.x, vertexes[v].p.y);
+	}
+}
+
+int main()
+{
+	matlab();
 	return 0;
 }
