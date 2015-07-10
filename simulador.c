@@ -25,7 +25,7 @@ typedef struct
 
 /* Simulation parameters */
 #define EDO_STEP 0.1
-#define STEP_COUNT 200
+#define STEP_COUNT 60
 //#define GRAVITY 9.8
 //#define VERTEX_COUNT 4
 //#define BAR_COUNT 4
@@ -38,7 +38,7 @@ typedef struct
 const spring_t springs[SPRING_COUNT] = {
 //	{.k = 0.1, .len = 1, .anchor = {.x = 0, .y = 0}, .vertex = 0},
 //	{.k = 0.2, .len = 1, .anchor = {.x = 5, .y = 0}, .vertex = 1}
-	{.k = 1.8, .len = 3, .anchor = {.x = 0, .y = 0}, .vertex = 0}
+	{.k = 9.8, .len = 3, .anchor = {.x = 0, .y = 0}, .vertex = 0}
 };
 
 vertex_t vertexes[VERTEX_COUNT] = {
@@ -46,8 +46,8 @@ vertex_t vertexes[VERTEX_COUNT] = {
 //	{.m = 0.05, .v = {.x = 0, .y = 0}, .p = {.x = 3, .y = 1}},
 //	{.m = 0.05, .v = {.x = 0, .y = 0}, .p = {.x = 1, .y = 2}},
 //	{.m = 0.02, .v = {.x = 0, .y = 0}, .p = {.x = 3, .y = 2}}
-	{.m = 0.5, .v = {.x = 0, .y = 0}, .p = {.x = 0, .y = 2}},
-	{.m = 0.5, .v = {.x = 0, .y = 0}, .p = {.x = 1, .y = 2}}
+	{.m = 0.5, .v = {.x = 0, .y = 1}, .p = {.x = 0, .y = 2}},
+	{.m = 0.5, .v = {.x = 0, .y = 0}, .p = {.x = 0, .y = 3}}
 };
 
 // Vertex pairs (i, i+1) ; i even
@@ -215,7 +215,7 @@ void CalcMatrixes(void)
 	// Weight macro. Finds vertex weight. x is the vertex index * 2 (even) or
 	// vertex index * 2 + 1 (odd)
 	#define W(x) (vertexes[(int)((x) / 2)].m)
-  
+
 	// First vertex (index) in a bar
 	#define vi(x) (bars[2 * (x)])
 
