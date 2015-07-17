@@ -9,4 +9,4 @@ The edges are fixed size (defined by the initial vertexes positions) and have no
 Vertexes can have initial velocity.  
 Springs connect a vertex to a fixed point in the simulation plane.  
 Springs also have no mass.  
-Spring stiffness can be adjusted per string.  
+Spring stiffness can be adjusted per spring.  
